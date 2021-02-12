@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import { format } from "date-fns";
+import ReactEmbedGist from "react-embed-gist";
 import {
   Container,
   Header,
@@ -11,6 +12,8 @@ import {
   QuestionCard,
   Logo,
   IconSignOut,
+  GistIcon,
+  ContainerGist,
 } from "./styles";
 
 import Input from "../../components/Input";
@@ -24,6 +27,7 @@ import Select from "../../components/Select";
 import Tag from "../../components/Tag";
 import Loading from "../../components/Loading";
 import { validSquaredImage } from "../../utils";
+import { FaGitHub } from "react-icons/fa";
 
 function Profile({ setIsLoading, handleReload, setMessage }) {
   const [student, setStudent] = useState(getUser());
@@ -100,7 +104,7 @@ function Answer({ answer }) {
   );
 }
 
-function Question({ question, setIsLoading }) {
+function Question({ question, setIsLoading, setCurrentGist }) {
   const [showAnswers, setShowAnswers] = useState(false);
 
   const [newAnswer, setNewAnswer] = useState("");
@@ -168,6 +172,9 @@ function Question({ question, setIsLoading }) {
         <p>
           em {format(new Date(question.created_at), "dd/MM/yyyy 'ás' HH:mm")}
         </p>
+        {question.gist && (
+          <GistIcon onClick={() => setCurrentGist(question.gist)} />
+        )}
       </header>
       <section>
         <strong>{question.title}</strong>
@@ -355,6 +362,22 @@ function NewQuestion({ handleReload, setIsLoading }) {
   );
 }
 
+function Gist({ gist, handleClose }) {
+  if (gist) {
+    const formatedGist = gist.split(".com/").pop();
+    return (
+      <Modal
+        title="Exemplo de código"
+        handleClose={() => handleClose(undefined)}
+      >
+        <ContainerGist>
+          <ReactEmbedGist gist={formatedGist} />
+        </ContainerGist>
+      </Modal>
+    );
+  } else return null;
+}
+
 function Home() {
   const history = useHistory();
 
@@ -365,6 +388,8 @@ function Home() {
   const [reload, setReload] = useState(null);
 
   const [showNewQuestion, setShowNewQuestion] = useState(false);
+
+  const [currentGist, setCurrentGist] = useState(undefined);
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -393,6 +418,7 @@ function Home() {
   return (
     <>
       {isLoading && <Loading />}
+      <Gist gist={currentGist} handleClose={setCurrentGist} />
       {showNewQuestion && (
         <Modal
           title="Faça uma pergunta"
@@ -415,7 +441,11 @@ function Home() {
           </ProfileContainer>
           <FeedContainer>
             {questions.map((q) => (
-              <Question question={q} setIsLoading={setIsLoading} />
+              <Question
+                question={q}
+                setIsLoading={setIsLoading}
+                setCurrentGist={setCurrentGist}
+              />
             ))}
           </FeedContainer>
           <ActionsContainer>
