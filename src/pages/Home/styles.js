@@ -1,5 +1,5 @@
-import { FaSignOutAlt, FaGithub } from "react-icons/fa";
-import styled from "styled-components";
+import { FaGithub, FaSignOutAlt } from "react-icons/fa";
+import styled, { keyframes } from "styled-components";
 
 export const Container = styled.div`
   width: 100vw;
@@ -72,11 +72,11 @@ export const FeedContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
 
+  gap: 10px;
   overflow-y: auto;
 
-  padding-top: 10px 0px;
+  padding: 10px 0px;
 `;
 
 export const ActionsContainer = styled.div`
@@ -134,8 +134,10 @@ export const QuestionCard = styled.article`
     > h1 {
       font-size: 18px;
       font-weight: bold;
+
       cursor: pointer;
-      transition: 0.2;
+
+      transition: 0.2s;
 
       :hover {
         color: var(--primary);
@@ -190,7 +192,7 @@ export const Logo = styled.img`
 
   margin: 20px;
   margin-top: 40px;
-  border-radius: 50%;
+  border-radius: 30px;
   border: 2px solid var(--dark);
 
   box-shadow: 0px 0px 5px var(--dark);
@@ -207,7 +209,9 @@ export const Logo = styled.img`
 export const IconSignOut = styled(FaSignOutAlt)`
   font-size: 30px;
   margin-right: 10px;
+
   cursor: pointer;
+
   transition: 0.2s;
 
   :hover {
@@ -251,8 +255,20 @@ export const GistIcon = styled(FaGithub)`
   }
 `;
 
+const slide = keyframes`
+  0%{
+    transform: scale(0.1);
+  }
+
+  100%{
+    transform: scale(1);
+  }
+`;
+
 export const ContainerGist = styled.section`
   margin-top: 10px;
+
+  animation: ${slide} 0.8s;
 
   h2 {
     font-size: 16px;

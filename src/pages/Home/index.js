@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { format } from "date-fns";
 import ReactEmbedGist from "react-embed-gist";
@@ -12,6 +12,7 @@ import {
   QuestionCard,
   Logo,
   IconSignOut,
+  FormNewQuestion,
   GistIcon,
   ContainerGist,
 } from "./styles";
@@ -20,27 +21,28 @@ import Input from "../../components/Input";
 import imgProfile from "../../assets/foto_perfil.png";
 import logo from "../../assets/logo.png";
 import { api } from "../../services/api";
-import { getUser, signOut, setUser } from "../../services/security";
+import { getUser, setUser, signOut } from "../../services/security";
 import Modal from "../../components/Modal";
-import { FormNewQuestion } from "../Home/styles";
 import Select from "../../components/Select";
 import Tag from "../../components/Tag";
 import Loading from "../../components/Loading";
 import { validSquaredImage } from "../../utils";
-import { FaGitHub } from "react-icons/fa";
+import {
+  FaGithub,
+  FaGithubAlt,
+  FaGithubSquare,
+  FaReacteurope,
+} from "react-icons/fa";
 
 function Profile({ setIsLoading, handleReload, setMessage }) {
   const [student, setStudent] = useState(getUser());
-
-  // useEffect(() => {
-  //   setStudent(getUser());
-  // }, []);
 
   const handleImage = async (e) => {
     if (!e.target.files[0]) return;
 
     try {
       await validSquaredImage(e.target.files[0]);
+
       const data = new FormData();
 
       data.append("image", e.target.files[0]);
@@ -90,14 +92,14 @@ function Answer({ answer }) {
   return (
     <section>
       <header>
-        <img src={answer.Student.image || imgProfile} alt="imagem de Perfil" />
+        <img src={answer.Student.image || imgProfile} alt="Imagem de Perfil" />
         <strong>
           por{" "}
           {student.studentId === answer.Student.id
             ? "Você"
             : answer.Student.name}
         </strong>
-        <p> {format(new Date(answer.created_at), "dd/MM/yyyy 'ás' HH:mm")}</p>
+        <p> {format(new Date(answer.created_at), "dd/MM/yyyy 'às' HH:mm")}</p>
       </header>
       <p>{answer.description}</p>
     </section>
@@ -170,7 +172,7 @@ function Question({ question, setIsLoading, setCurrentGist }) {
             : question.Student.name}
         </strong>
         <p>
-          em {format(new Date(question.created_at), "dd/MM/yyyy 'ás' HH:mm")}
+          em {format(new Date(question.created_at), "dd/MM/yyyy 'às' HH:mm")}
         </p>
         {question.gist && (
           <GistIcon onClick={() => setCurrentGist(question.gist)} />
@@ -179,7 +181,7 @@ function Question({ question, setIsLoading, setCurrentGist }) {
       <section>
         <strong>{question.title}</strong>
         <p>{question.description}</p>
-        <img src={question.image} />
+        {question.image && <img src={question.image} alt="Imagem da questão" />}
       </section>
       <footer>
         <h1 onClick={() => setShowAnswers(!showAnswers)}>
@@ -206,7 +208,7 @@ function Question({ question, setIsLoading, setCurrentGist }) {
             onChange={(e) => setNewAnswer(e.target.value)}
             required
             value={newAnswer}
-          ></textarea>
+          />
           <button>Enviar</button>
         </form>
       </footer>
@@ -220,6 +222,7 @@ function NewQuestion({ handleReload, setIsLoading }) {
     description: "",
     gist: "",
   });
+
   const [categories, setCategories] = useState([]);
 
   const [categoriesSel, setCategoriesSel] = useState([]);
@@ -249,7 +252,7 @@ function NewQuestion({ handleReload, setIsLoading }) {
 
     const categorySel = categories.find((c) => c.id.toString() === idSel);
 
-    if (!categoriesSel.includes(categorySel))
+    if (categorySel && !categoriesSel.includes(categorySel))
       setCategoriesSel([...categoriesSel, categorySel]);
 
     e.target[e.target.selectedIndex].disabled = true;
@@ -300,7 +303,7 @@ function NewQuestion({ handleReload, setIsLoading }) {
     setIsLoading(true);
 
     try {
-      await api.post("./questions", data, {
+      await api.post("/questions", data, {
         headers: {
           "Content-type": "multipart/form-data",
         },
@@ -320,12 +323,14 @@ function NewQuestion({ handleReload, setIsLoading }) {
         label="Título"
         value={newQuestion.title}
         handler={handleInput}
+        required
       />
       <Input
         id="description"
         label="Descrição"
         value={newQuestion.description}
         handler={handleInput}
+        required
       />
       <Input
         id="gist"
@@ -356,7 +361,7 @@ function NewQuestion({ handleReload, setIsLoading }) {
         ))}
       </div>
       <input type="file" onChange={handleImage} />
-      <img alt="Pré-Visualização" ref={imageRef} />
+      <img alt="Pré-visualização" ref={imageRef} />
       <button>Enviar</button>
     </FormNewQuestion>
   );
@@ -381,15 +386,17 @@ function Gist({ gist, handleClose }) {
 function Home() {
   const history = useHistory();
 
-  const [isLoading, setIsLoading] = useState(false);
-
   const [questions, setQuestions] = useState([]);
 
   const [reload, setReload] = useState(null);
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const [showNewQuestion, setShowNewQuestion] = useState(false);
 
   const [currentGist, setCurrentGist] = useState(undefined);
+
+  const feedRef = useRef();
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -400,6 +407,13 @@ function Home() {
 
       setIsLoading(false);
     };
+
+    feedRef.current.addEventListener("scroll", () => {
+      console.log(
+        feedRef.current.clientHeight + feedRef.current.scrollTop ===
+          feedRef.current.scrollHeight
+      );
+    });
 
     loadQuestions();
   }, [reload]);
@@ -418,7 +432,9 @@ function Home() {
   return (
     <>
       {isLoading && <Loading />}
+
       <Gist gist={currentGist} handleClose={setCurrentGist} />
+
       {showNewQuestion && (
         <Modal
           title="Faça uma pergunta"
@@ -439,7 +455,7 @@ function Home() {
           <ProfileContainer>
             <Profile handleReload={handleReload} setIsLoading={setIsLoading} />
           </ProfileContainer>
-          <FeedContainer>
+          <FeedContainer ref={feedRef}>
             {questions.map((q) => (
               <Question
                 question={q}
