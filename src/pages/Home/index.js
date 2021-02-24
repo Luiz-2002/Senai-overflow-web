@@ -33,6 +33,8 @@ import {
   FaGithubSquare,
   FaReacteurope,
 } from "react-icons/fa";
+import SpinnerLoading from "../../components/SpinnerLoading";
+import InputSearch from "../../components/InputSearch";
 
 function Profile({ setIsLoading, handleReload, setMessage }) {
   const [student, setStudent] = useState(getUser());
@@ -197,7 +199,7 @@ function Question({ question, setIsLoading, setCurrentGist }) {
         {showAnswers && (
           <>
             {answers.map((answer) => (
-              <Answer answer={answer} />
+              <Answer key={answer.id} answer={answer} />
             ))}
           </>
         )}
@@ -288,6 +290,8 @@ function NewQuestion({ handleReload, setIsLoading }) {
   const handleAddNewQuestion = async (e) => {
     e.preventDefault();
 
+    if (categoriesSel.length === 0) return alert("Selecione uma categoria");
+
     const data = new FormData();
 
     data.append("title", newQuestion.title);
@@ -323,6 +327,7 @@ function NewQuestion({ handleReload, setIsLoading }) {
         label="Título"
         value={newQuestion.title}
         handler={handleInput}
+        minLength="5"
         required
       />
       <Input
@@ -330,12 +335,14 @@ function NewQuestion({ handleReload, setIsLoading }) {
         label="Descrição"
         value={newQuestion.description}
         handler={handleInput}
+        minLength="10"
         required
       />
       <Input
         id="gist"
         label="Gist"
         value={newQuestion.gist}
+        minLength="20"
         handler={handleInput}
       />
       <Select
@@ -392,29 +399,45 @@ function Home() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+
   const [showNewQuestion, setShowNewQuestion] = useState(false);
 
   const [currentGist, setCurrentGist] = useState(undefined);
 
+  const [page, setPage] = useState(1);
+
+  const [totalQuestions, setTotalQuestions] = useState(0);
+
+  const [search, setSearch] = useState("");
+
   const feedRef = useRef();
 
-  useEffect(() => {
-    const loadQuestions = async () => {
-      setIsLoading(true);
-      const response = await api.get("/feed");
+  const loadQuestions = async (reload) => {
+    //se já tiver buscando, não busca de novo
+    if (isLoadingFeed) return;
 
-      setQuestions(response.data);
+    //se tiver chego no fim, não busca de novo
+    if (totalQuestions > 0 && totalQuestions == questions.length) return;
 
-      setIsLoading(false);
-    };
+    setIsLoadingFeed(true);
 
-    feedRef.current.addEventListener("scroll", () => {
-      console.log(
-        feedRef.current.clientHeight + feedRef.current.scrollTop ===
-          feedRef.current.scrollHeight
-      );
+    const response = await api.get("/feed", {
+      params: { page },
     });
 
+    setPage(page + 1);
+
+    setQuestions([...questions, ...response.data]);
+
+    setTotalQuestions(response.headers["x-total-count"]);
+
+    console.log(totalQuestions);
+
+    setIsLoadingFeed(false);
+  };
+
+  useEffect(() => {
     loadQuestions();
   }, [reload]);
 
@@ -426,7 +449,37 @@ function Home() {
 
   const handleReload = () => {
     setShowNewQuestion(false);
+    setIsLoading(false);
+    setPage(1);
+    setQuestions([]);
+    setSearch("");
     setReload(Math.random());
+  };
+
+  const feedScrollObserver = (e) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.target;
+
+    if (scrollTop + clientHeight > scrollHeight - 100 && search.length < 4)
+      loadQuestions();
+  };
+
+  const handleSearch = async (e) => {
+    setSearch(e.target.value);
+
+    if (e.target.value.length === 0) handleReload();
+
+    if (e.target.value.length < 4) return;
+
+    try {
+      const response = await api.get("/questions", {
+        params: { search: e.target.value },
+      });
+
+      setQuestions(response.data);
+    } catch (error) {
+      alert(error);
+      console.log(error);
+    }
   };
 
   return (
@@ -449,20 +502,29 @@ function Home() {
       <Container>
         <Header>
           <Logo src={logo} onClick={handleReload} />
+          <InputSearch handler={handleSearch} value={search} />
           <IconSignOut onClick={handleSignOut} />
         </Header>
         <Content>
           <ProfileContainer>
             <Profile handleReload={handleReload} setIsLoading={setIsLoading} />
           </ProfileContainer>
-          <FeedContainer ref={feedRef}>
+          <FeedContainer ref={feedRef} onScroll={feedScrollObserver}>
+            {questions.length === 0 &&
+              search.length > 3 &&
+              "Nenhuma questão encontrada"}
             {questions.map((q) => (
               <Question
+                key={q.id}
                 question={q}
                 setIsLoading={setIsLoading}
                 setCurrentGist={setCurrentGist}
               />
             ))}
+            {isLoadingFeed && <SpinnerLoading />}
+            {totalQuestions > 0 &&
+              totalQuestions == questions.length &&
+              "Isso é tudo"}
           </FeedContainer>
           <ActionsContainer>
             <button onClick={() => setShowNewQuestion(true)}>
